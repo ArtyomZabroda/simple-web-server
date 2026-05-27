@@ -11,8 +11,30 @@ TcpSocket::TcpSocket() {
   socket_fd_ = socket(AF_INET, SOCK_STREAM, 0);
 }
 
+TcpSocket::TcpSocket(int raw_socket_fd) {
+  socket_fd_ = raw_socket_fd;
+}
+
+TcpSocket::TcpSocket(TcpSocket&& right) : socket_fd_(right.socket_fd_) {
+  // Invalidate the moved-from socket so it doesn't get closed on destruction
+  right.socket_fd_ = -1;
+}
+
+TcpSocket& TcpSocket::operator=(TcpSocket&& right) {
+  if (this != &right) {
+    if (socket_fd_ != -1) {
+      close(socket_fd_);
+    }
+    socket_fd_ = right.socket_fd_;
+    right.socket_fd_ = -1;
+  }
+  return *this;
+}
+
 TcpSocket::~TcpSocket() {
-  close(socket_fd_);
+  if (socket_fd_ != -1) {
+    close(socket_fd_);
+  }
 }
 
 tl::expected<void, std::error_code> TcpSocket::connect(const std::string& hostname, int port) {
@@ -27,9 +49,9 @@ tl::expected<void, std::error_code> TcpSocket::connect(const std::string& hostna
   return {};
 }
 
-tl::expected<int, std::error_code> TcpSocket::send(std::byte* data, int n) {
+tl::expected<int, std::error_code> TcpSocket::send(std::span<std::byte> data) {
   int bytes_sent_nr;
-  if ((bytes_sent_nr = ::send(socket_fd_, data, n, 0)) == -1) {
+  if ((bytes_sent_nr = ::send(socket_fd_, data.data(), data.size(), 0)) == -1) {
     return tl::unexpected(std::error_code(errno, std::system_category()));
   }
   return bytes_sent_nr;
@@ -43,6 +65,33 @@ tl::expected<std::vector<std::byte>, std::error_code> TcpSocket::recv(int n) {
   }
   buffer.resize(bytes_recieved_nr);
   return buffer;
+}
+
+tl::expected<void, std::error_code> TcpSocket::bind(const std::string& hostname, int port) {
+  sockaddr_in addr{};
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(port);
+  addr.sin_addr.s_addr = inet_addr(hostname.c_str());
+  if (::bind(socket_fd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == -1) {
+    return tl::unexpected(std::error_code(errno, std::system_category()));
+  }
+  return {};
+}
+
+tl::expected<void, std::error_code> TcpSocket::listen(int backlog) {
+  if (::listen(socket_fd_, backlog) == -1) {
+    return tl::unexpected(std::error_code(errno, std::system_category()));
+  }
+  return {};
+}
+
+tl::expected<TcpSocket, std::error_code> TcpSocket::accept() {
+  // We pass nullptr because we don't need the client's address information
+  int client_fd = ::accept(socket_fd_, nullptr, nullptr);
+  if (client_fd == -1) {
+    return tl::unexpected(std::error_code(errno, std::system_category()));
+  }
+  return TcpSocket(client_fd);
 }
 
 }
