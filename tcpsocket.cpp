@@ -48,7 +48,7 @@ boost::leaf::result<void> TcpSocket::connect(const std::string& hostname, int po
   return {};
 }
 
-boost::leaf::result<int> TcpSocket::send(std::span<std::byte> data) {
+boost::leaf::result<int> TcpSocket::send(std::string_view data) {
   int bytes_sent_nr;
   if ((bytes_sent_nr = ::send(socket_fd_, data.data(), data.size(), MSG_NOSIGNAL)) == -1) {
     return boost::leaf::new_error(std::error_code(errno, std::system_category()));
@@ -56,8 +56,8 @@ boost::leaf::result<int> TcpSocket::send(std::span<std::byte> data) {
   return bytes_sent_nr;
 }
 
-boost::leaf::result<std::vector<std::byte>> TcpSocket::recv(int n) {
-  std::vector<std::byte> buffer(n);
+boost::leaf::result<std::string> TcpSocket::recv(int n) {
+  std::string buffer(n, '\0');
   int bytes_recieved_nr;
   if ((bytes_recieved_nr = ::recv(socket_fd_, buffer.data(), n, 0)) == -1) {
     return boost::leaf::new_error(std::error_code(errno, std::system_category()));
@@ -67,6 +67,10 @@ boost::leaf::result<std::vector<std::byte>> TcpSocket::recv(int n) {
 }
 
 boost::leaf::result<void> TcpSocket::bind(const std::string& hostname, int port) {
+  int opt = 1;
+  if (setsockopt(socket_fd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
+    return boost::leaf::new_error(std::error_code(errno, std::system_category()));
+  }
   sockaddr_in addr{};
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port);

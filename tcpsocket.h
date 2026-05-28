@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <string>
 #include <vector>
+#include <string_view>
 #include <span>
 #include "utils.h"
 
@@ -22,8 +23,8 @@ class TcpSocket {
   TcpSocket& operator=(TcpSocket&& right);
   
   boost::leaf::result<void> connect(const std::string& hostname, int port);
-  boost::leaf::result<int> send(std::span<std::byte> data);
-  boost::leaf::result<std::vector<std::byte>> recv(int n);
+  boost::leaf::result<int> send(std::string_view data);
+  boost::leaf::result<std::string> recv(int n);
   boost::leaf::result<void> bind(const std::string& hostname, int port);
   boost::leaf::result<void> listen(int backlog = SOMAXCONN);
   boost::leaf::result<TcpSocket> accept();

@@ -5,4 +5,5 @@ project(SimpleWebServer)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED)
 add_executable(SimpleWebServer main.cpp tcpsocket.cpp
-    tcpserver.cpp)
+    tcpserver.cpp
+    httpserver.cpp)
