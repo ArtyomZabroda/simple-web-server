@@ -1,26 +1,25 @@
-#include "server.h"
+#include "leaf.hpp"
+#include "simpletcpserver.h"
+#include "tcpserver.h"
+#include <cstdlib>
 #include <iostream>
+#include <system_error>
 
 int main(int argc, char *argv[]) {
-  auto server_ex = sws::TcpServer::Create(
-      "127.0.0.1", 8080,
-      [](sws::TcpSocket &connection_socket, std::vector<std::byte> bytes) {
-        std::string recieved_str(reinterpret_cast<const char *>(bytes.data()),
-                                 bytes.size());
-        std::cout << "Recieved: " << recieved_str << std::endl;
-        std::string response = "ok";
-        connection_socket.send(std::span<std::byte>(
-            reinterpret_cast<std::byte *>(response.data()), response.size()));
-      });
-
-  if (server_ex.has_value()) {
-    std::cout << "Server is running on 127.0.0.1:8080..." << std::endl;
-    server_ex.value().Run();
-  } else {
-    std::cerr << "Failed to start server: " << server_ex.error().message()
+  auto server_ex = boost::leaf::try_handle_all(
+    []() ->  boost::leaf::result<sws::SimpleTcpServer> {
+      return sws::SimpleTcpServer::Create("127.0.0.1", 8080);
+    },
+    [](std::error_code err_code) -> sws::SimpleTcpServer {
+       std::cerr << "Failed to start server: " << err_code.message()
               << std::endl;
-    return 1;
-  }
-
-  return 0;
+       exit(EXIT_FAILURE);
+    },
+    []() -> sws::SimpleTcpServer {
+      std::cerr << "Failed to start server"
+              << std::endl;
+      exit(EXIT_FAILURE);
+    });
+  server_ex.Run();
+  return EXIT_SUCCESS;
 }

@@ -1,5 +1,4 @@
-#include "socket.h"
-#include "tl/expected.hpp"
+#include "tcpsocket.h"
 #include <cerrno>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -37,59 +36,59 @@ TcpSocket::~TcpSocket() {
   }
 }
 
-tl::expected<void, std::error_code> TcpSocket::connect(const std::string& hostname, int port) {
+boost::leaf::result<void> TcpSocket::connect(const std::string& hostname, int port) {
   sockaddr_in addr{};
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port);
   addr.sin_addr.s_addr = inet_addr(hostname.c_str());
   
   if (::connect(socket_fd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0) {
-    return tl::unexpected(std::error_code(errno, std::system_category()));
+    return boost::leaf::new_error(std::error_code(errno, std::system_category()));
   }
   return {};
 }
 
-tl::expected<int, std::error_code> TcpSocket::send(std::span<std::byte> data) {
+boost::leaf::result<int> TcpSocket::send(std::span<std::byte> data) {
   int bytes_sent_nr;
-  if ((bytes_sent_nr = ::send(socket_fd_, data.data(), data.size(), 0)) == -1) {
-    return tl::unexpected(std::error_code(errno, std::system_category()));
+  if ((bytes_sent_nr = ::send(socket_fd_, data.data(), data.size(), MSG_NOSIGNAL)) == -1) {
+    return boost::leaf::new_error(std::error_code(errno, std::system_category()));
   }
   return bytes_sent_nr;
 }
 
-tl::expected<std::vector<std::byte>, std::error_code> TcpSocket::recv(int n) {
+boost::leaf::result<std::vector<std::byte>> TcpSocket::recv(int n) {
   std::vector<std::byte> buffer(n);
   int bytes_recieved_nr;
   if ((bytes_recieved_nr = ::recv(socket_fd_, buffer.data(), n, 0)) == -1) {
-    return tl::unexpected(std::error_code(errno, std::system_category()));
+    return boost::leaf::new_error(std::error_code(errno, std::system_category()));
   }
   buffer.resize(bytes_recieved_nr);
   return buffer;
 }
 
-tl::expected<void, std::error_code> TcpSocket::bind(const std::string& hostname, int port) {
+boost::leaf::result<void> TcpSocket::bind(const std::string& hostname, int port) {
   sockaddr_in addr{};
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port);
   addr.sin_addr.s_addr = inet_addr(hostname.c_str());
   if (::bind(socket_fd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == -1) {
-    return tl::unexpected(std::error_code(errno, std::system_category()));
+    return boost::leaf::new_error(std::error_code(errno, std::system_category()));
   }
   return {};
 }
 
-tl::expected<void, std::error_code> TcpSocket::listen(int backlog) {
+boost::leaf::result<void> TcpSocket::listen(int backlog) {
   if (::listen(socket_fd_, backlog) == -1) {
-    return tl::unexpected(std::error_code(errno, std::system_category()));
+    return boost::leaf::new_error(std::error_code(errno, std::system_category()));
   }
   return {};
 }
 
-tl::expected<TcpSocket, std::error_code> TcpSocket::accept() {
+boost::leaf::result<TcpSocket> TcpSocket::accept() {
   // We pass nullptr because we don't need the client's address information
   int client_fd = ::accept(socket_fd_, nullptr, nullptr);
   if (client_fd == -1) {
-    return tl::unexpected(std::error_code(errno, std::system_category()));
+    return boost::leaf::new_error(std::error_code(errno, std::system_category()));
   }
   return TcpSocket(client_fd);
 }

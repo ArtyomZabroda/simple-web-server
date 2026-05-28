@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include <string>
 #include <vector>
-#include "tl/expected.hpp"
 #include <span>
 #include "utils.h"
 
@@ -22,12 +21,12 @@ class TcpSocket {
   TcpSocket(TcpSocket&& right);
   TcpSocket& operator=(TcpSocket&& right);
   
-  tl::expected<void, std::error_code> connect(const std::string& hostname, int port);
-  tl::expected<int, std::error_code> send(std::span<std::byte> data);
-  tl::expected<std::vector<std::byte>, std::error_code> recv(int n);
-  tl::expected<void, std::error_code> bind(const std::string& hostname, int port);
-  tl::expected<void, std::error_code> listen(int backlog = SOMAXCONN);
-  tl::expected<TcpSocket, std::error_code> accept();
+  boost::leaf::result<void> connect(const std::string& hostname, int port);
+  boost::leaf::result<int> send(std::span<std::byte> data);
+  boost::leaf::result<std::vector<std::byte>> recv(int n);
+  boost::leaf::result<void> bind(const std::string& hostname, int port);
+  boost::leaf::result<void> listen(int backlog = SOMAXCONN);
+  boost::leaf::result<TcpSocket> accept();
 
  private:
   int socket_fd_ = -1;
