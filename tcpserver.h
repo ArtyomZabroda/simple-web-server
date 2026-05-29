@@ -17,6 +17,7 @@ private:
 
   TcpSocket socket_;
   bool stopped_ = true;
+  std::vector<std::jthread> workers_;
 };
 
 } // namespace sws
